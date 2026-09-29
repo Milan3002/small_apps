@@ -1,0 +1,1815 @@
+<!DOCTYPE html>
+<html lang="cs">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Interaktivní Vizualizace Neuronové Sítě</title>
+  <style>
+    :root {
+      --bg-primary: #0f172a;
+      --bg-secondary: #1e293b;
+      --bg-tertiary: #334155;
+      --border-color: #475569;
+      --text-main: #f8fafc;
+      --text-muted: #94a3b8;
+      --accent-blue: #38bdf8;
+      --accent-purple: #a855f7;
+      --accent-green: #22c55e;
+      --accent-red: #ef4444;
+      --accent-amber: #f59e0b;
+      --font-mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      background-color: var(--bg-primary);
+      color: var(--text-main);
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      overflow-x: hidden;
+    }
+
+    header {
+      background: linear-gradient(180deg, rgba(30, 41, 59, 0.9) 0%, rgba(15, 23, 42, 0.9) 100%);
+      border-bottom: 1px solid var(--border-color);
+      padding: 16px 24px;
+      backdrop-filter: blur(8px);
+      position: sticky;
+      top: 0;
+      z-index: 50;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 16px;
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .brand-icon {
+      width: 36px;
+      height: 36px;
+      background: linear-gradient(135deg, var(--accent-blue), var(--accent-purple));
+      border-radius: 10px;
+      display: grid;
+      place-items: center;
+      font-weight: 800;
+      font-size: 18px;
+      box-shadow: 0 0 16px rgba(56, 189, 248, 0.4);
+    }
+
+    .brand-text h1 {
+      font-size: 1.25rem;
+      font-weight: 700;
+      letter-spacing: -0.02em;
+    }
+
+    .brand-text p {
+      font-size: 0.8rem;
+      color: var(--text-muted);
+    }
+
+    .nav-tabs {
+      display: flex;
+      gap: 8px;
+      background: rgba(15, 23, 42, 0.6);
+      padding: 4px;
+      border-radius: 8px;
+      border: 1px solid var(--border-color);
+    }
+
+    .tab-btn {
+      background: transparent;
+      border: none;
+      color: var(--text-muted);
+      padding: 8px 16px;
+      border-radius: 6px;
+      font-size: 0.875rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .tab-btn:hover {
+      color: var(--text-main);
+      background: rgba(255, 255, 255, 0.05);
+    }
+
+    .tab-btn.active {
+      color: #fff;
+      background: linear-gradient(135deg, #2563eb, #7c3aed);
+      box-shadow: 0 2px 8px rgba(37, 99, 235, 0.3);
+    }
+
+    main {
+      flex: 1;
+      padding: 20px;
+      max-width: 1600px;
+      margin: 0 auto;
+      width: 100%;
+    }
+
+    .tab-content {
+      display: none;
+    }
+
+    .tab-content.active {
+      display: block;
+      animation: fadeIn 0.3s ease;
+    }
+
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(6px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    /* Layout for Playground */
+    .playground-grid {
+      display: grid;
+      grid-template-columns: 1fr 340px;
+      gap: 20px;
+    }
+
+    @media (max-width: 1100px) {
+      .playground-grid {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    .card {
+      background: var(--bg-secondary);
+      border: 1px solid var(--border-color);
+      border-radius: 12px;
+      padding: 16px;
+      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.25);
+    }
+
+    .card-title {
+      font-size: 1rem;
+      font-weight: 700;
+      color: var(--text-main);
+      margin-bottom: 12px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .badge {
+      font-size: 0.7rem;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      padding: 3px 8px;
+      border-radius: 9999px;
+      background: rgba(56, 189, 248, 0.15);
+      color: var(--accent-blue);
+      border: 1px solid rgba(56, 189, 248, 0.3);
+    }
+
+    /* Controls Bar */
+    .controls-bar {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 12px;
+      align-items: center;
+      margin-bottom: 16px;
+      padding: 12px 16px;
+      background: rgba(30, 41, 59, 0.7);
+      border: 1px solid var(--border-color);
+      border-radius: 10px;
+    }
+
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      background: var(--bg-tertiary);
+      border: 1px solid var(--border-color);
+      color: var(--text-main);
+      padding: 8px 16px;
+      border-radius: 6px;
+      font-size: 0.85rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.15s ease;
+    }
+
+    .btn:hover {
+      background: #475569;
+      transform: translateY(-1px);
+    }
+
+    .btn:active {
+      transform: translateY(0);
+    }
+
+    .btn-primary {
+      background: linear-gradient(135deg, #0284c7, #2563eb);
+      border-color: #38bdf8;
+      box-shadow: 0 0 12px rgba(2, 132, 199, 0.3);
+    }
+
+    .btn-primary:hover {
+      background: linear-gradient(135deg, #0369a1, #1d4ed8);
+    }
+
+    .btn-danger {
+      background: rgba(239, 68, 68, 0.2);
+      border-color: var(--accent-red);
+      color: #fca5a5;
+    }
+
+    .btn-danger:hover {
+      background: rgba(239, 68, 68, 0.4);
+    }
+
+    .control-group {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 0.85rem;
+      color: var(--text-muted);
+    }
+
+    select, input[type="range"] {
+      background: var(--bg-primary);
+      border: 1px solid var(--border-color);
+      color: var(--text-main);
+      border-radius: 6px;
+      padding: 6px 10px;
+      font-size: 0.85rem;
+      outline: none;
+    }
+
+    input[type="range"] {
+      accent-color: var(--accent-blue);
+      cursor: pointer;
+      padding: 0;
+    }
+
+    /* Network Visualization Canvas */
+    .network-container {
+      position: relative;
+      width: 100%;
+      height: 480px;
+      background: radial-gradient(circle at center, #1e293b 0%, #0f172a 100%);
+      border-radius: 10px;
+      overflow: hidden;
+      border: 1px solid var(--border-color);
+    }
+
+    #networkCanvas {
+      width: 100%;
+      height: 100%;
+      display: block;
+      cursor: crosshair;
+    }
+
+    .network-overlay {
+      position: absolute;
+      top: 12px;
+      left: 12px;
+      pointer-events: none;
+      font-size: 0.75rem;
+      color: var(--text-muted);
+      background: rgba(15, 23, 42, 0.8);
+      padding: 6px 10px;
+      border-radius: 6px;
+      border: 1px solid rgba(255, 255, 255, 0.1);
+    }
+
+    .legend-bar {
+      position: absolute;
+      bottom: 12px;
+      left: 12px;
+      display: flex;
+      gap: 16px;
+      background: rgba(15, 23, 42, 0.8);
+      padding: 6px 12px;
+      border-radius: 6px;
+      font-size: 0.75rem;
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      align-items: center;
+    }
+
+    .legend-item {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .legend-dot {
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+    }
+
+    /* Side Panel Elements */
+    .side-stack {
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+    }
+
+    .decision-boundary-container {
+      position: relative;
+      width: 100%;
+      aspect-ratio: 1;
+      border-radius: 8px;
+      overflow: hidden;
+      border: 1px solid var(--border-color);
+      background: #000;
+    }
+
+    #decisionCanvas {
+      width: 100%;
+      height: 100%;
+      display: block;
+    }
+
+    .db-overlay {
+      position: absolute;
+      bottom: 8px;
+      right: 8px;
+      font-size: 0.7rem;
+      background: rgba(0, 0, 0, 0.6);
+      padding: 2px 6px;
+      border-radius: 4px;
+      color: #cbd5e1;
+    }
+
+    .metrics-row {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+      margin-top: 10px;
+    }
+
+    .metric-box {
+      background: var(--bg-primary);
+      border: 1px solid var(--border-color);
+      padding: 8px 12px;
+      border-radius: 8px;
+    }
+
+    .metric-label {
+      font-size: 0.7rem;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+
+    .metric-value {
+      font-size: 1.15rem;
+      font-weight: 700;
+      font-family: var(--font-mono);
+      margin-top: 2px;
+      color: var(--accent-blue);
+    }
+
+    /* Inspector & Math Breakdown */
+    .inspector-panel {
+      margin-top: 16px;
+      background: var(--bg-secondary);
+      border: 1px solid var(--border-color);
+      border-radius: 12px;
+      padding: 16px;
+    }
+
+    .math-formula {
+      background: var(--bg-primary);
+      border: 1px solid var(--border-color);
+      border-radius: 8px;
+      padding: 12px 16px;
+      font-family: var(--font-mono);
+      font-size: 0.85rem;
+      line-height: 1.6;
+      color: #e2e8f0;
+      overflow-x: auto;
+      margin-top: 8px;
+    }
+
+    .math-formula .highlight-blue { color: var(--accent-blue); font-weight: bold; }
+    .math-formula .highlight-purple { color: var(--accent-purple); font-weight: bold; }
+    .math-formula .highlight-green { color: var(--accent-green); font-weight: bold; }
+    .math-formula .highlight-red { color: var(--accent-red); font-weight: bold; }
+    .math-formula .highlight-amber { color: var(--accent-amber); font-weight: bold; }
+
+    /* Interactive Sliders Grid */
+    .sliders-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+      gap: 16px;
+      margin-top: 12px;
+    }
+
+    .slider-card {
+      background: var(--bg-primary);
+      border: 1px solid var(--border-color);
+      padding: 12px;
+      border-radius: 8px;
+    }
+
+    .slider-header {
+      display: flex;
+      justify-content: space-between;
+      font-size: 0.8rem;
+      margin-bottom: 6px;
+      color: var(--text-muted);
+    }
+
+    .slider-header span.val {
+      font-family: var(--font-mono);
+      font-weight: 700;
+      color: var(--text-main);
+    }
+
+    /* Explainer Tab Styles */
+    .guide-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(360px, 1fr));
+      gap: 20px;
+    }
+
+    .guide-card {
+      background: var(--bg-secondary);
+      border: 1px solid var(--border-color);
+      border-radius: 12px;
+      padding: 20px;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    .guide-step-num {
+      width: 28px;
+      height: 28px;
+      border-radius: 50%;
+      background: linear-gradient(135deg, var(--accent-blue), var(--accent-purple));
+      color: #fff;
+      display: grid;
+      place-items: center;
+      font-weight: 800;
+      font-size: 0.85rem;
+    }
+
+    .guide-header {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .guide-header h3 {
+      font-size: 1.05rem;
+      color: var(--text-main);
+    }
+
+    .guide-body {
+      font-size: 0.9rem;
+      color: #cbd5e1;
+      line-height: 1.6;
+    }
+
+    .guide-body strong {
+      color: #fff;
+    }
+
+    .guide-body ul {
+      margin-left: 20px;
+      margin-top: 8px;
+    }
+
+    .guide-body li {
+      margin-bottom: 6px;
+    }
+
+    .concept-box {
+      background: rgba(15, 23, 42, 0.7);
+      border-left: 3px solid var(--accent-blue);
+      padding: 10px 14px;
+      border-radius: 0 8px 8px 0;
+      margin: 10px 0;
+      font-size: 0.85rem;
+    }
+
+    /* Loss Graph */
+    #lossCanvas {
+      width: 100%;
+      height: 90px;
+      display: block;
+      background: var(--bg-primary);
+      border-radius: 6px;
+      border: 1px solid var(--border-color);
+      margin-top: 8px;
+    }
+
+    /* Tooltip */
+    .canvas-tooltip {
+      position: absolute;
+      background: rgba(15, 23, 42, 0.95);
+      border: 1px solid var(--accent-blue);
+      padding: 8px 12px;
+      border-radius: 6px;
+      font-size: 0.75rem;
+      pointer-events: none;
+      z-index: 100;
+      display: none;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
+      font-family: var(--font-mono);
+      white-space: pre;
+    }
+  </style>
+</head>
+<body>
+
+  <header>
+    <div class="brand">
+      <div class="brand-icon">NN</div>
+      <div class="brand-text">
+        <h1>Neuronová Síť: Interaktivní Model</h1>
+        <p>Vizuální laboratorní simulátor dopředného šíření a zpětné propagace</p>
+      </div>
+    </div>
+
+    <div class="nav-tabs">
+      <button class="tab-btn active" data-tab="playground" onclick="switchTab('playground', this)">🎮 Interaktivní Model & Učení</button>
+      <button class="tab-btn" data-tab="stepbystep" onclick="switchTab('stepbystep', this)">🔬 Rozpad Výpočtu Krok za Krokem</button>
+      <button class="tab-btn" data-tab="guide" onclick="switchTab('guide', this)">📖 Jak to funguje (Teorie a Principy)</button>
+    </div>
+  </header>
+
+  <main>
+    <!-- TAB 1: PLAYGROUND & TRAINING -->
+    <div id="tab-playground" class="tab-content active">
+      <div class="controls-bar">
+        <button id="btnTrain" class="btn btn-primary" onclick="toggleTraining()">
+          <span id="trainIcon">▶</span> <span id="trainLabel">Spustit učení</span>
+        </button>
+        <button class="btn" onclick="stepTrain()">⏭ Jeden krok (Krok zpět)</button>
+        <button class="btn" onclick="resetNetworkWeights()">🎲 Náhodné váhy</button>
+
+        <div class="control-group">
+          <label for="datasetSelect">Úloha dat:</label>
+          <select id="datasetSelect" onchange="changeDataset()">
+            <option value="xor">Problém XOR (Nelineární)</option>
+            <option value="circle">Kruh (Uvnitř vs. Vně)</option>
+            <option value="linear">Lineárně dělitelná data</option>
+          </select>
+        </div>
+
+        <div class="control-group">
+          <label for="activationSelect">Aktivace:</label>
+          <select id="activationSelect" onchange="changeActivation()">
+            <option value="tanh">Tanh (-1 až 1)</option>
+            <option value="sigmoid">Sigmoid (0 až 1)</option>
+            <option value="relu">ReLU (max(0, x))</option>
+          </select>
+        </div>
+
+        <div class="control-group">
+          <label for="lrSlider">Rychlost učení (LR):</label>
+          <input type="range" id="lrSlider" min="0.01" max="0.5" step="0.01" value="0.1" oninput="updateLR(this.value)">
+          <span id="lrVal" style="font-family: var(--font-mono); font-size: 0.85rem;">0.10</span>
+        </div>
+
+        <div class="control-group">
+          <label for="hiddenNeurons">Skryté neurony:</label>
+          <select id="hiddenNeurons" onchange="changeHiddenCount(this.value)">
+            <option value="2">2 neurony</option>
+            <option value="3">3 neurony</option>
+            <option value="4" selected>4 neurony</option>
+            <option value="6">6 neuronů</option>
+            <option value="8">8 neuronů</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="playground-grid">
+        <!-- Center: Neural Net Graph -->
+        <div class="card">
+          <div class="card-title">
+            <span>Architektura Sítě (Vstupy $X_1, X_2 \to$ Skrytá vrstva $\to$ Výstup $\hat{y}$)</span>
+            <span class="badge">Klikněte na neuron pro detail</span>
+          </div>
+
+          <div class="network-container" id="networkWrapper">
+            <canvas id="networkCanvas"></canvas>
+            <div class="network-overlay">
+              💡 <b>Tip:</b> Kliknutím na kterýkoliv neuron ho vyberete pro podrobnou inspekci níže. Spojnice znázorňují váhy ($w$).
+            </div>
+            <div class="legend-bar">
+              <div class="legend-item">
+                <div class="legend-dot" style="background: var(--accent-blue);"></div>
+                <span>Kladná váha / aktivace (+)</span>
+              </div>
+              <div class="legend-item">
+                <div class="legend-dot" style="background: var(--accent-red);"></div>
+                <span>Záporná váha / aktivace (-)</span>
+              </div>
+              <div class="legend-item">
+                <span style="color: var(--text-muted);">Tloušťka = Síla spojení (|w|)</span>
+              </div>
+            </div>
+            <div id="canvasTooltip" class="canvas-tooltip"></div>
+          </div>
+
+          <!-- Live Input Sliders -->
+          <div class="sliders-grid" style="margin-top: 16px;">
+            <div class="slider-card">
+              <div class="slider-header">
+                <span>Vstup X₁ (Osa X)</span>
+                <span class="val" id="valX1">0.50</span>
+              </div>
+              <input type="range" id="inputX1" min="-1" max="1" step="0.05" value="0.5" style="width: 100%;" oninput="onInputChanged()">
+            </div>
+            <div class="slider-card">
+              <div class="slider-header">
+                <span>Vstup X₂ (Osa Y)</span>
+                <span class="val" id="valX2">-0.50</span>
+              </div>
+              <input type="range" id="inputX2" min="-1" max="1" step="0.05" value="-0.5" style="width: 100%;" oninput="onInputChanged()">
+            </div>
+            <div class="slider-card" style="display: flex; flex-direction: column; justify-content: center; background: rgba(30, 41, 59, 0.4);">
+              <div style="font-size: 0.75rem; color: var(--text-muted); text-transform: uppercase;">Výstup sítě pro [X₁, X₂]</div>
+              <div style="font-size: 1.4rem; font-weight: 800; font-family: var(--font-mono); color: var(--accent-green); margin-top: 4px;" id="liveOutputVal">
+                0.00
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Right Side: 2D Decision Boundary & Training Stats -->
+        <div class="side-stack">
+          <div class="card">
+            <div class="card-title">
+              <span>2D Rozhodovací plocha</span>
+              <span class="badge" id="epochBadge">Epocha: 0</span>
+            </div>
+            <div class="decision-boundary-container">
+              <canvas id="decisionCanvas" width="300" height="300"></canvas>
+              <div class="db-overlay">Prostor [-1, 1]²</div>
+            </div>
+
+            <div class="metrics-row">
+              <div class="metric-box">
+                <div class="metric-label">Ztráta (Loss)</div>
+                <div class="metric-value" id="lossVal">0.2500</div>
+              </div>
+              <div class="metric-box">
+                <div class="metric-label">Přesnost</div>
+                <div class="metric-value" id="accVal" style="color: var(--accent-green);">50.0%</div>
+              </div>
+            </div>
+
+            <div style="margin-top: 12px;">
+              <div class="metric-label">Historie ztráty (Loss Curve)</div>
+              <canvas id="lossCanvas" width="300" height="90"></canvas>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Detail Inspector for Selected Neuron -->
+      <div class="inspector-panel" id="inspectorSection">
+        <div class="card-title">
+          <span id="inspectorTitle">🔍 Detail Neuronu: Skrytá vrstva - Neuron 1</span>
+          <span class="badge" style="background: rgba(168, 85, 247, 0.2); color: var(--accent-purple); border-color: var(--accent-purple);">Inspektor Matematiky</span>
+        </div>
+
+        <p style="font-size: 0.85rem; color: var(--text-muted);">
+          Podrobný rozklad toho, jak přesně vybraný neuron převádí příchozí signály na výstupní aktivaci.
+        </p>
+
+        <div class="math-formula" id="formulaContainer">
+          <!-- Dynamically populated math breakdown -->
+        </div>
+
+        <div id="neuronWeightSliders" class="sliders-grid" style="margin-top: 16px;">
+          <!-- Dynamically populated sliders for selected neuron's weights & bias -->
+        </div>
+      </div>
+    </div>
+
+    <!-- TAB 2: STEP BY STEP BREAKDOWN -->
+    <div id="tab-stepbystep" class="tab-content">
+      <div class="card" style="margin-bottom: 20px;">
+        <div class="card-title">
+          <span>🔬 Dopředný průchod krok za krokem (Forward Propagation)</span>
+        </div>
+        <p style="color: #cbd5e1; font-size: 0.9rem; line-height: 1.6; margin-bottom: 16px;">
+          Zvolte vstupy a procházejte výpočet vrstvu po vrstvě. Sledujte, jak se z pouhých dvou čísel stává komplexní rozhodnutí sítě.
+        </p>
+
+        <div style="display: flex; gap: 12px; align-items: center; margin-bottom: 16px;">
+          <button class="btn btn-primary" onclick="stepProgress(-1)">◀ Předchozí krok</button>
+          <button class="btn btn-primary" onclick="stepProgress(1)">Následující krok ▶</button>
+          <span id="stepIndicator" style="font-weight: 700; color: var(--accent-blue); margin-left: 10px;">Krok 1 / 4: Příjem vstupních signálů</span>
+        </div>
+
+        <div id="stepVisualContainer" style="background: var(--bg-primary); border: 1px solid var(--border-color); border-radius: 10px; padding: 20px;">
+          <!-- Interactive Step Visualisation injected here -->
+        </div>
+      </div>
+    </div>
+
+    <!-- TAB 3: THEORETICAL GUIDE -->
+    <div id="tab-guide" class="tab-content">
+      <div class="guide-grid">
+        <div class="guide-card">
+          <div class="guide-header">
+            <div class="guide-step-num">1</div>
+            <h3>Co je to umělý neuron?</h3>
+          </div>
+          <div class="guide-body">
+            Umělý neuron (perceptron) je základní výpočetní jednotka sítě. Inspiroval se biologickým neuronem v mozku:
+            <ul>
+              <li><strong>Dendrity (Vstupy x):</strong> Přijímají číselné signály z předchozích neuronů nebo přímo ze senzoru.</li>
+              <li><strong>Synapse (Váhy w):</strong> Každý vstup má váhu, která určuje jeho důležitost (tlumí nebo zesiluje signál).</li>
+              <li><strong>Buněčné tělo (Suma):</strong> Neuron sečte všechny vážené vstupy a přičte vlastní práh citlivosti zvaný <strong>Bias (b)</strong>:</li>
+            </ul>
+            <div class="concept-box">
+              $$z = (x_1 \cdot w_1) + (x_2 \cdot w_2) + \dots + b = \sum_{i} x_i w_i + b$$
+            </div>
+          </div>
+        </div>
+
+        <div class="guide-card">
+          <div class="guide-header">
+            <div class="guide-step-num">2</div>
+            <h3>Proč potřebujeme Bias?</h3>
+          </div>
+          <div class="guide-body">
+            Kdybychom počítali pouze $z = w_1 x_1 + w_2 x_2$, pak pro nulové vstupy $(x_1=0, x_2=0)$ by byl výstup vždy striktně roven $0$.
+            <ul>
+              <li><strong>Rozhodovací přímka</strong> by byla uvězněna v počátku souřadnic $[0, 0]$.</li>
+              <li><strong>Bias $b$</strong> funguje jako posun (offset). Umožňuje síti posouvat rozhodovací hranici libovolně po ploše, i když jsou vstupy nulové.</li>
+            </ul>
+            <div class="concept-box">
+              Analogie: Pokud váhy určují sklon přímky ($y = ax$), bias je posun po ose y ($y = ax + b$).
+            </div>
+          </div>
+        </div>
+
+        <div class="guide-card">
+          <div class="guide-header">
+            <div class="guide-step-num">3</div>
+            <h3>K čemu slouží Aktivační Funkce?</h3>
+          </div>
+          <div class="guide-body">
+            Pokud bychom pouze sčítali vážené vstupy, celá síť by byla pouhou <strong>lineární transformací</strong> (i kdyby měla 100 vrstev, dala by se zredukovat na jedinou matici).
+            <ul>
+              <li><strong>Nelinearita:</strong> Aktivační funkce (např. ReLU, Tanh, Sigmoid) vnáší do výpočtu ohyby a nelinearitu.</li>
+              <li>Díky tomu dokáže síť řešit problémy jako <strong>XOR</strong>, rozpoznávat tváře nebo rozumět textu.</li>
+            </ul>
+            <div class="concept-box">
+              <strong>ReLU:</strong> $f(z) = \max(0, z)$ — jednoduchá, rychlá, v moderním deep learningu nejoblíbenější.<br>
+              <strong>Tanh:</strong> $f(z) = \tanh(z)$ — škáluje výstup hladce od -1 do +1.
+            </div>
+          </div>
+        </div>
+
+        <div class="guide-card">
+          <div class="guide-header">
+            <div class="guide-step-num">4</div>
+            <h3>Jak se síť učí? (Backpropagation)</h3>
+          </div>
+          <div class="guide-body">
+            Učení je proces hledání takových vah $w$ a biasů $b$, které minimalizují celkovou chybu (Loss).
+            <ul>
+              <li><strong>1. Dopředný průchod (Forward Pass):</strong> Data projdou sítí a vznikne předpověď $\hat{y}$.</li>
+              <li><strong>2. Výpočet chyby (Loss):</strong> Spočítáme rozdíl mezi správným výsledkem $y$ a naší předpovědí $\hat{y}$ (např. Mean Squared Error).</li>
+              <li><strong>3. Zpětný průchod (Backprop):</strong> Pomocí řetízkového pravidla derivací (Chain Rule) zjistíme, jak moc každá jednotlivá váha přispěla k chybě.</li>
+              <li><strong>4. Gradient Descent:</strong> Upravíme váhy v opačném směru gradientu: $w \leftarrow w - \alpha \cdot \frac{\partial L}{\partial w}$.</li>
+            </ul>
+          </div>
+        </div>
+
+        <div class="guide-card">
+          <div class="guide-header">
+            <div class="guide-step-num">5</div>
+            <h3>Záhada XOR: Proč skrytá vrstva?</h3>
+          </div>
+          <div class="guide-body">
+            V roce 1969 Marvin Minsky dokázal, že jednoduchý jednovrstvý perceptron nedokáže vyřešit operaci <strong>XOR</strong> (exkluzivní OR), protože body $[(0,0)=0, (1,1)=0]$ a $[(1,0)=1, (0,1)=1]$ nelze oddělit jedinou rovnou přímkou.
+            <ul>
+              <li>Tento objev způsobil tzv. první "AI Winter" (zimu umělé inteligence).</li>
+              <li>Řešením je právě <strong>skrytá vrstva</strong>: každý skrytý neuron vytvoří vlastní přímku a výstupní neuron tyto poloroviny zkombinuje dohromady!</li>
+            </ul>
+          </div>
+        </div>
+
+        <div class="guide-card">
+          <div class="guide-header">
+            <div class="guide-step-num">6</div>
+            <h3>Přeučení (Overfitting) a Hyperparametry</h3>
+          </div>
+          <div class="guide-body">
+            <ul>
+              <li><strong>Learning Rate ($\alpha$):</strong> Určuje velikost kroku při úpravě vah. Příliš malý krok = učení trvá věčnost. Příliš velký krok = síla osciluje a diverguje.</li>
+              <li><strong>Kapacita sítě:</strong> Čím více neuronů skrytá vrstva má, tím složitější hranici dokáže vytvořit. Při příliš mnoha neuronech se však může "naučit data nazpaměť" včetně šumu (overfitting).</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <script>
+    /* =========================================================================
+       1. NEURAL NETWORK ENGINE (Multi-Layer Perceptron: 2 Inputs -> H Hidden -> 1 Output)
+       ========================================================================= */
+
+    // Activation Functions & Derivatives
+    const Activations = {
+      tanh: {
+        fn: x => Math.tanh(x),
+        df: y => 1 - y * y // derivative given y = tanh(x)
+      },
+      sigmoid: {
+        fn: x => 1 / (1 + Math.exp(-Math.max(-50, Math.min(50, x)))),
+        df: y => y * (1 - y) // derivative given y = sigmoid(x)
+      },
+      relu: {
+        fn: x => Math.max(0, x),
+        df: y => y > 0 ? 1 : 0
+      }
+    };
+
+    class NeuralNetwork {
+      constructor(inputSize = 2, hiddenSize = 4, outputSize = 1, actName = 'tanh') {
+        this.inputSize = inputSize;
+        this.hiddenSize = hiddenSize;
+        this.outputSize = outputSize;
+        this.actName = actName;
+        this.lr = 0.1;
+        this.initWeights();
+      }
+
+      initWeights() {
+        // Xavier/Glorot normal initialization
+        const scaleH = Math.sqrt(2.0 / (this.inputSize + this.hiddenSize));
+        this.w1 = Array.from({ length: this.hiddenSize }, () =>
+          Array.from({ length: this.inputSize }, () => (Math.random() * 2 - 1) * scaleH)
+        );
+        this.b1 = Array.from({ length: this.hiddenSize }, () => (Math.random() * 0.2 - 0.1));
+
+        const scaleO = Math.sqrt(2.0 / (this.hiddenSize + this.outputSize));
+        this.w2 = Array.from({ length: this.outputSize }, () =>
+          Array.from({ length: this.hiddenSize }, () => (Math.random() * 2 - 1) * scaleO)
+        );
+        this.b2 = Array.from({ length: this.outputSize }, () => (Math.random() * 0.2 - 0.1));
+
+        // Cache for forward pass and visualization
+        this.lastInputs = [0, 0];
+        this.z1 = new Array(this.hiddenSize).fill(0);
+        this.a1 = new Array(this.hiddenSize).fill(0);
+        this.z2 = new Array(this.outputSize).fill(0);
+        this.a2 = new Array(this.outputSize).fill(0);
+      }
+
+      forward(inputs) {
+        this.lastInputs = [...inputs];
+        const act = Activations[this.actName].fn;
+
+        // Hidden Layer
+        for (let j = 0; j < this.hiddenSize; j++) {
+          let sum = this.b1[j];
+          for (let i = 0; i < this.inputSize; i++) {
+            sum += inputs[i] * this.w1[j][i];
+          }
+          this.z1[j] = sum;
+          this.a1[j] = act(sum);
+        }
+
+        // Output Layer (Using tanh/sigmoid depending on choice)
+        for (let k = 0; k < this.outputSize; k++) {
+          let sum = this.b2[k];
+          for (let j = 0; j < this.hiddenSize; j++) {
+            sum += this.a1[j] * this.w2[k][j];
+          }
+          this.z2[k] = sum;
+          // For output, we use tanh for [-1, 1] range target or sigmoid for [0, 1]
+          this.a2[k] = Math.tanh(sum);
+        }
+
+        return this.a2;
+      }
+
+      trainSample(inputs, target) {
+        // 1. Forward Pass
+        const out = this.forward(inputs)[0];
+        const error = target - out;
+
+        // Output layer gradients: dL/dOut * dOut/dz2
+        // Loss = 0.5 * (target - out)^2 => dL/dout = -(target - out) = -error
+        // out = tanh(z2) => dout/dz2 = 1 - out^2
+        const deltaOutput = error * (1 - out * out);
+
+        // Hidden layer gradients
+        const actDf = Activations[this.actName].df;
+        const deltaHidden = new Array(this.hiddenSize).fill(0);
+        for (let j = 0; j < this.hiddenSize; j++) {
+          const sumGrad = deltaOutput * this.w2[0][j];
+          deltaHidden[j] = sumGrad * actDf(this.a1[j]);
+        }
+
+        // Update Output Weights & Bias
+        for (let j = 0; j < this.hiddenSize; j++) {
+          this.w2[0][j] += this.lr * deltaOutput * this.a1[j];
+        }
+        this.b2[0] += this.lr * deltaOutput;
+
+        // Update Hidden Weights & Bias
+        for (let j = 0; j < this.hiddenSize; j++) {
+          for (let i = 0; i < this.inputSize; i++) {
+            this.w1[j][i] += this.lr * deltaHidden[j] * inputs[i];
+          }
+          this.b1[j] += this.lr * deltaHidden[j];
+        }
+
+        return error * error; // MSE contribution
+      }
+    }
+
+    /* =========================================================================
+       2. DATASETS FOR CLASSIFICATION & DECISION BOUNDARY
+       ========================================================================= */
+    const Datasets = {
+      xor: () => {
+        // 4 canonical XOR clusters around (-0.5, 0.5)
+        const pts = [];
+        const base = [
+          { x: -0.6, y: -0.6, label: -1 },
+          { x: 0.6, y: 0.6, label: -1 },
+          { x: -0.6, y: 0.6, label: 1 },
+          { x: 0.6, y: -0.6, label: 1 }
+        ];
+        base.forEach(b => {
+          for (let i = 0; i < 20; i++) {
+            pts.push({
+              x: b.x + (Math.random() * 0.4 - 0.2),
+              y: b.y + (Math.random() * 0.4 - 0.2),
+              label: b.label
+            });
+          }
+        });
+        return pts;
+      },
+      circle: () => {
+        const pts = [];
+        for (let i = 0; i < 80; i++) {
+          const r = Math.sqrt(Math.random()) * 0.9;
+          const theta = Math.random() * Math.PI * 2;
+          const x = r * Math.cos(theta);
+          const y = r * Math.sin(theta);
+          const label = r < 0.45 ? 1 : -1;
+          pts.push({ x, y, label });
+        }
+        return pts;
+      },
+      linear: () => {
+        const pts = [];
+        for (let i = 0; i < 80; i++) {
+          const x = Math.random() * 1.6 - 0.8;
+          const y = Math.random() * 1.6 - 0.8;
+          const label = (y > x * 0.8 + 0.1) ? 1 : -1;
+          pts.push({ x, y, label });
+        }
+        return pts;
+      }
+    };
+
+    /* =========================================================================
+       3. GLOBAL APP STATE & INITIALIZATION
+       ========================================================================= */
+    let net = new NeuralNetwork(2, 4, 1, 'tanh');
+    let currentDatasetName = 'xor';
+    let dataset = Datasets.xor();
+    let isTraining = false;
+    let trainAnimationId = null;
+    let epoch = 0;
+    let lossHistory = [];
+    let selectedNeuron = { layer: 'hidden', index: 0 }; // 'hidden' or 'output'
+    let currentStepIndex = 1; // for Step-by-Step tab
+
+    // Canvas References
+    const netCanvas = document.getElementById('networkCanvas');
+    const netCtx = netCanvas.getContext('2d');
+    const dbCanvas = document.getElementById('decisionCanvas');
+    const dbCtx = dbCanvas.getContext('2d');
+    const lossCanvas = document.getElementById('lossCanvas');
+    const lossCtx = lossCanvas.getContext('2d');
+    const tooltip = document.getElementById('canvasTooltip');
+
+    // Canvas High DPI scaling
+    function setupCanvasDPI(canvas, ctx) {
+      const dpr = window.devicePixelRatio || 1;
+      const rect = canvas.getBoundingClientRect();
+      if (rect.width === 0 || rect.height === 0) return;
+      canvas.width = rect.width * dpr;
+      canvas.height = rect.height * dpr;
+      ctx.setTransform(1, 0, 0, 1, 0, 0);
+      ctx.scale(dpr, dpr);
+    }
+
+    /* =========================================================================
+       4. VISUALIZATION: NEURAL NETWORK GRAPH
+       ========================================================================= */
+    let nodePositions = { inputs: [], hidden: [], output: [] };
+
+    function calculateNodePositions(width, height) {
+      const padX = 90;
+      const colX = [padX, width / 2, width - padX];
+
+      // Input layer (2 nodes)
+      const inputY = [height / 2 - 60, height / 2 + 60];
+      const inputs = inputY.map((y, idx) => ({
+        x: colX[0], y, r: 24, id: `input_${idx}`, label: `X${idx + 1}`, type: 'input', index: idx
+      }));
+
+      // Hidden layer (N nodes)
+      const hCount = net.hiddenSize;
+      const hiddenSpacing = Math.min(75, (height - 80) / hCount);
+      const hStartY = (height - (hCount - 1) * hiddenSpacing) / 2;
+      const hidden = Array.from({ length: hCount }, (_, idx) => ({
+        x: colX[1],
+        y: hStartY + idx * hiddenSpacing,
+        r: 22,
+        id: `hidden_${idx}`,
+        label: `H${idx + 1}`,
+        type: 'hidden',
+        index: idx
+      }));
+
+      // Output layer (1 node)
+      const output = [{
+        x: colX[2], y: height / 2, r: 26, id: 'output_0', label: 'Výstup ŷ', type: 'output', index: 0
+      }];
+
+      nodePositions = { inputs, hidden, output };
+    }
+
+    function drawNetwork() {
+      const rect = netCanvas.getBoundingClientRect();
+      const w = rect.width;
+      const h = rect.height;
+      netCtx.clearRect(0, 0, w, h);
+
+      calculateNodePositions(w, h);
+
+      // Evaluate current inputs through network
+      const inX1 = parseFloat(document.getElementById('inputX1').value);
+      const inX2 = parseFloat(document.getElementById('inputX2').value);
+      net.forward([inX1, inX2]);
+
+      // 1. Draw Synapses (Weights)
+      // Input -> Hidden
+      nodePositions.hidden.forEach(hNode => {
+        nodePositions.inputs.forEach(inNode => {
+          const weight = net.w1[hNode.index][inNode.index];
+          drawSynapse(netCtx, inNode, hNode, weight);
+        });
+      });
+
+      // Hidden -> Output
+      nodePositions.output.forEach(outNode => {
+        nodePositions.hidden.forEach(hNode => {
+          const weight = net.w2[outNode.index][hNode.index];
+          drawSynapse(netCtx, hNode, outNode, weight);
+        });
+      });
+
+      // 2. Draw Nodes (Neurons)
+      // Inputs
+      nodePositions.inputs.forEach((n, idx) => {
+        const val = idx === 0 ? inX1 : inX2;
+        drawNeuron(netCtx, n, val, null, false);
+      });
+
+      // Hidden
+      nodePositions.hidden.forEach((n, idx) => {
+        const act = net.a1[idx];
+        const isSel = (selectedNeuron.layer === 'hidden' && selectedNeuron.index === idx);
+        drawNeuron(netCtx, n, act, net.b1[idx], isSel);
+      });
+
+      // Output
+      nodePositions.output.forEach((n, idx) => {
+        const act = net.a2[idx];
+        const isSel = (selectedNeuron.layer === 'output' && selectedNeuron.index === idx);
+        drawNeuron(netCtx, n, act, net.b2[idx], isSel);
+      });
+
+      // Update Live Output Value Box
+      const outElem = document.getElementById('liveOutputVal');
+      const val = net.a2[0];
+      outElem.textContent = (val >= 0 ? '+' : '') + val.toFixed(4);
+      outElem.style.color = val >= 0 ? 'var(--accent-blue)' : 'var(--accent-red)';
+    }
+
+    function drawSynapse(ctx, fromNode, toNode, weight) {
+      ctx.save();
+      ctx.beginPath();
+      ctx.moveTo(fromNode.x, fromNode.y);
+      ctx.lineTo(toNode.x, toNode.y);
+
+      // Color based on sign: Blue = positive, Red = negative
+      const isPositive = weight >= 0;
+      const alpha = Math.min(1, Math.max(0.15, Math.abs(weight) * 0.7));
+      ctx.strokeStyle = isPositive
+        ? `rgba(56, 189, 248, ${alpha})`
+        : `rgba(239, 68, 68, ${alpha})`;
+
+      // Thickness based on weight magnitude
+      ctx.lineWidth = Math.min(7, Math.max(1.2, Math.abs(weight) * 2.8));
+      ctx.stroke();
+
+      // Mini Weight value tag in the middle
+      const mx = (fromNode.x * 0.4 + toNode.x * 0.6);
+      const my = (fromNode.y * 0.4 + toNode.y * 0.6);
+      ctx.font = '9px ' + getComputedStyle(document.body).getPropertyValue('--font-mono');
+      ctx.fillStyle = 'rgba(255, 255, 255, 0.45)';
+      ctx.fillText(weight.toFixed(2), mx - 10, my - 3);
+
+      ctx.restore();
+    }
+
+    function drawNeuron(ctx, node, activation, bias, isSelected) {
+      ctx.save();
+
+      // Outer Glow if Selected
+      if (isSelected) {
+        ctx.beginPath();
+        ctx.arc(node.x, node.y, node.r + 7, 0, Math.PI * 2);
+        ctx.strokeStyle = '#a855f7';
+        ctx.lineWidth = 3;
+        ctx.shadowColor = '#a855f7';
+        ctx.shadowBlur = 12;
+        ctx.stroke();
+      }
+
+      // Neuron Body Fill according to Activation value
+      ctx.beginPath();
+      ctx.arc(node.x, node.y, node.r, 0, Math.PI * 2);
+
+      // Map activation to color: >0 Cyan, <0 Red, 0 Dark
+      let fillColor;
+      if (activation > 0.05) {
+        const intensity = Math.min(1, activation);
+        fillColor = `rgba(56, 189, 248, ${0.2 + intensity * 0.7})`;
+      } else if (activation < -0.05) {
+        const intensity = Math.min(1, Math.abs(activation));
+        fillColor = `rgba(239, 68, 68, ${0.2 + intensity * 0.7})`;
+      } else {
+        fillColor = '#1e293b';
+      }
+
+      ctx.fillStyle = fillColor;
+      ctx.fill();
+      ctx.lineWidth = 2;
+      ctx.strokeStyle = isSelected ? '#c084fc' : '#475569';
+      ctx.stroke();
+
+      // Text Labels inside Neuron
+      ctx.fillStyle = '#ffffff';
+      ctx.font = 'bold 11px system-ui';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText(node.label, node.x, node.y - 5);
+
+      // Activation numerical value
+      ctx.font = '10px ' + getComputedStyle(document.body).getPropertyValue('--font-mono');
+      ctx.fillStyle = '#cbd5e1';
+      ctx.fillText(activation.toFixed(2), node.x, node.y + 8);
+
+      // Bias badge above neuron
+      if (bias !== null && bias !== undefined) {
+        ctx.font = '9px ' + getComputedStyle(document.body).getPropertyValue('--font-mono');
+        ctx.fillStyle = '#94a3b8';
+        ctx.fillText(`b:${bias >= 0 ? '+' : ''}${bias.toFixed(2)}`, node.x, node.y - node.r - 5);
+      }
+
+      ctx.restore();
+    }
+
+    /* =========================================================================
+       5. VISUALIZATION: 2D DECISION BOUNDARY & DATASET
+       ========================================================================= */
+    function drawDecisionBoundary() {
+      const w = dbCanvas.width;
+      const h = dbCanvas.height;
+      const imgData = dbCtx.createImageData(w, h);
+      const data = imgData.data;
+
+      // Sample grid points across [-1, 1] x [-1, 1]
+      const step = 4; // block size for fast rendering
+      for (let py = 0; py < h; py += step) {
+        const y = -((py / h) * 2 - 1); // flip y so top is +1
+        for (let px = 0; px < w; px += step) {
+          const x = (px / w) * 2 - 1;
+          const pred = net.forward([x, y])[0]; // in [-1, 1]
+
+          // Color interpolate: -1 is Red, +1 is Blue, 0 is Neutral
+          let r, g, b;
+          if (pred > 0) {
+            // Blue shade
+            const t = Math.min(1, pred);
+            r = Math.floor(15 + t * (56 - 15));
+            g = Math.floor(23 + t * (189 - 23));
+            b = Math.floor(42 + t * (248 - 42));
+          } else {
+            // Red shade
+            const t = Math.min(1, -pred);
+            r = Math.floor(15 + t * (239 - 15));
+            g = Math.floor(23 + t * (68 - 23));
+            b = Math.floor(42 + t * (68 - 42));
+          }
+
+          // Fill block
+          for (let dy = 0; dy < step && py + dy < h; dy++) {
+            for (let dx = 0; dx < step && px + dx < w; dx++) {
+              const idx = ((py + dy) * w + (px + dx)) * 4;
+              data[idx] = r;
+              data[idx + 1] = g;
+              data[idx + 2] = b;
+              data[idx + 3] = 255;
+            }
+          }
+        }
+      }
+
+      dbCtx.putImageData(imgData, 0, 0);
+
+      // Draw Grid Axes
+      dbCtx.strokeStyle = 'rgba(255, 255, 255, 0.15)';
+      dbCtx.lineWidth = 1;
+      dbCtx.beginPath();
+      dbCtx.moveTo(w / 2, 0);
+      dbCtx.lineTo(w / 2, h);
+      dbCtx.moveTo(0, h / 2);
+      dbCtx.lineTo(w, h / 2);
+      dbCtx.stroke();
+
+      // Draw Dataset Points
+      dataset.forEach(pt => {
+        const px = ((pt.x + 1) / 2) * w;
+        const py = ((-pt.y + 1) / 2) * h;
+
+        dbCtx.beginPath();
+        dbCtx.arc(px, py, 4.5, 0, Math.PI * 2);
+        dbCtx.fillStyle = pt.label > 0 ? '#38bdf8' : '#ef4444';
+        dbCtx.fill();
+        dbCtx.lineWidth = 1.5;
+        dbCtx.strokeStyle = '#ffffff';
+        dbCtx.stroke();
+      });
+
+      // Draw current test input crosshair
+      const inX1 = parseFloat(document.getElementById('inputX1').value);
+      const inX2 = parseFloat(document.getElementById('inputX2').value);
+      const curPx = ((inX1 + 1) / 2) * w;
+      const curPy = ((-inX2 + 1) / 2) * h;
+
+      dbCtx.beginPath();
+      dbCtx.arc(curPx, curPy, 8, 0, Math.PI * 2);
+      dbCtx.strokeStyle = '#f59e0b';
+      dbCtx.lineWidth = 2.5;
+      dbCtx.stroke();
+
+      dbCtx.beginPath();
+      dbCtx.arc(curPx, curPy, 2, 0, Math.PI * 2);
+      dbCtx.fillStyle = '#f59e0b';
+      dbCtx.fill();
+    }
+
+    /* =========================================================================
+       6. VISUALIZATION: LOSS CURVE
+       ========================================================================= */
+    function drawLossCurve() {
+      const w = lossCanvas.width;
+      const h = lossCanvas.height;
+      lossCtx.clearRect(0, 0, w, h);
+
+      if (lossHistory.length < 2) return;
+
+      const maxLoss = Math.max(0.5, ...lossHistory.slice(0, 10));
+      lossCtx.strokeStyle = '#38bdf8';
+      lossCtx.lineWidth = 2;
+      lossCtx.beginPath();
+
+      const stepX = w / Math.max(20, lossHistory.length - 1);
+      lossHistory.forEach((val, i) => {
+        const x = i * stepX;
+        const normY = Math.min(1, Math.max(0, val / maxLoss));
+        const y = h - 6 - normY * (h - 12);
+        if (i === 0) lossCtx.moveTo(x, y);
+        else lossCtx.lineTo(x, y);
+      });
+      lossCtx.stroke();
+
+      // Show latest loss value text on graph
+      const lastVal = lossHistory[lossHistory.length - 1];
+      lossCtx.fillStyle = '#94a3b8';
+      lossCtx.font = '10px ' + getComputedStyle(document.body).getPropertyValue('--font-mono');
+      lossCtx.fillText(`Chyba: ${lastVal.toFixed(4)}`, w - 90, 16);
+    }
+
+    /* =========================================================================
+       7. TRAINING ENGINE LOOP
+       ========================================================================= */
+    function trainOneEpoch() {
+      let totalLoss = 0;
+      let correct = 0;
+
+      // Shuffle dataset
+      const shuffled = [...dataset].sort(() => Math.random() - 0.5);
+
+      shuffled.forEach(pt => {
+        const loss = net.trainSample([pt.x, pt.y], pt.label);
+        totalLoss += loss;
+        const pred = net.forward([pt.x, pt.y])[0];
+        if ((pred > 0 && pt.label > 0) || (pred <= 0 && pt.label < 0)) {
+          correct++;
+        }
+      });
+
+      const avgLoss = totalLoss / dataset.length;
+      const accuracy = (correct / dataset.length) * 100;
+
+      epoch++;
+      lossHistory.push(avgLoss);
+      if (lossHistory.length > 80) lossHistory.shift();
+
+      // Update UI Metrics
+      document.getElementById('epochBadge').textContent = `Epocha: ${epoch}`;
+      document.getElementById('lossVal').textContent = avgLoss.toFixed(4);
+      document.getElementById('accVal').textContent = accuracy.toFixed(1) + '%';
+    }
+
+    function toggleTraining() {
+      isTraining = !isTraining;
+      const trainIcon = document.getElementById('trainIcon');
+      const trainLabel = document.getElementById('trainLabel');
+      const btn = document.getElementById('btnTrain');
+
+      if (isTraining) {
+        trainIcon.textContent = '⏸';
+        trainLabel.textContent = 'Pozastavit učení';
+        btn.classList.remove('btn-primary');
+        btn.classList.add('btn-danger');
+        runTrainingLoop();
+      } else {
+        trainIcon.textContent = '▶';
+        trainLabel.textContent = 'Spustit učení';
+        btn.classList.remove('btn-danger');
+        btn.classList.add('btn-primary');
+        cancelAnimationFrame(trainAnimationId);
+      }
+    }
+
+    function runTrainingLoop() {
+      // Train 10 epochs per animation frame for smooth, brisk convergence
+      for (let i = 0; i < 6; i++) {
+        trainOneEpoch();
+      }
+      drawNetwork();
+      drawDecisionBoundary();
+      drawLossCurve();
+      updateInspector();
+
+      if (isTraining) {
+        trainAnimationId = requestAnimationFrame(runTrainingLoop);
+      }
+    }
+
+    function stepTrain() {
+      trainOneEpoch();
+      drawNetwork();
+      drawDecisionBoundary();
+      drawLossCurve();
+      updateInspector();
+    }
+
+    function resetNetworkWeights() {
+      net.initWeights();
+      epoch = 0;
+      lossHistory = [];
+      document.getElementById('epochBadge').textContent = `Epocha: 0`;
+      document.getElementById('lossVal').textContent = '0.0000';
+      document.getElementById('accVal').textContent = '0.0%';
+      drawNetwork();
+      drawDecisionBoundary();
+      drawLossCurve();
+      updateInspector();
+    }
+
+    function changeDataset() {
+      const select = document.getElementById('datasetSelect');
+      currentDatasetName = select.value;
+      dataset = Datasets[currentDatasetName]();
+      resetNetworkWeights();
+    }
+
+    function changeActivation() {
+      const select = document.getElementById('activationSelect');
+      net.actName = select.value;
+      drawNetwork();
+      drawDecisionBoundary();
+      updateInspector();
+    }
+
+    function updateLR(val) {
+      net.lr = parseFloat(val);
+      document.getElementById('lrVal').textContent = parseFloat(val).toFixed(2);
+    }
+
+    function changeHiddenCount(val) {
+      const count = parseInt(val, 10);
+      net = new NeuralNetwork(2, count, 1, net.actName);
+      selectedNeuron = { layer: 'hidden', index: 0 };
+      resetNetworkWeights();
+    }
+
+    function onInputChanged() {
+      const x1 = parseFloat(document.getElementById('inputX1').value);
+      const x2 = parseFloat(document.getElementById('inputX2').value);
+      document.getElementById('valX1').textContent = x1.toFixed(2);
+      document.getElementById('valX2').textContent = x2.toFixed(2);
+
+      drawNetwork();
+      drawDecisionBoundary();
+      updateInspector();
+      if (document.getElementById('tab-stepbystep').classList.contains('active')) {
+        renderStepVisual();
+      }
+    }
+
+    /* =========================================================================
+       8. DETAILED NEURON INSPECTOR & FORMULA EXPANSION
+       ========================================================================= */
+    function updateInspector() {
+      const inX1 = parseFloat(document.getElementById('inputX1').value);
+      const inX2 = parseFloat(document.getElementById('inputX2').value);
+      net.forward([inX1, inX2]);
+
+      const titleElem = document.getElementById('inspectorTitle');
+      const formulaElem = document.getElementById('formulaContainer');
+      const slidersElem = document.getElementById('neuronWeightSliders');
+
+      if (selectedNeuron.layer === 'hidden') {
+        const j = selectedNeuron.index;
+        titleElem.textContent = `🔍 Detail Neuronu: Skrytá vrstva (H${j + 1})`;
+
+        const w0 = net.w1[j][0];
+        const w1 = net.w1[j][1];
+        const b = net.b1[j];
+        const term1 = inX1 * w0;
+        const term2 = inX2 * w1;
+        const sumZ = net.z1[j];
+        const actA = net.a1[j];
+
+        formulaElem.innerHTML = `
+<b>1. Vážený součet ($z_{H${j+1}}$):</b>
+  z = (x₁ · w₁) + (x₂ · w₂) + bias
+  z = (<span class="highlight-blue">${inX1.toFixed(2)}</span> · <span class="highlight-purple">${w0.toFixed(3)}</span>) + (<span class="highlight-blue">${inX2.toFixed(2)}</span> · <span class="highlight-purple">${w1.toFixed(3)}</span>) + (<span class="highlight-amber">${b.toFixed(3)}</span>)
+  z = ${term1.toFixed(3)} + ${term2.toFixed(3)} + ${b.toFixed(3)} = <span class="highlight-green">${sumZ.toFixed(4)}</span>
+
+<b>2. Aplikace aktivační funkce (${net.actName.toUpperCase()}):</b>
+  a = ${net.actName}(z) = ${net.actName}(${sumZ.toFixed(4)}) = <span class="highlight-blue" style="font-size: 1.1em;">${actA.toFixed(4)}</span>
+        `;
+
+        slidersElem.innerHTML = `
+          <div class="slider-card">
+            <div class="slider-header">
+              <span>Váha w₁ (z X₁ do H${j+1})</span>
+              <span class="val">${w0.toFixed(2)}</span>
+            </div>
+            <input type="range" min="-3" max="3" step="0.05" value="${w0}" style="width:100%" oninput="modifyWeight('w1', ${j}, 0, this.value)">
+          </div>
+          <div class="slider-card">
+            <div class="slider-header">
+              <span>Váha w₂ (z X₂ do H${j+1})</span>
+              <span class="val">${w1.toFixed(2)}</span>
+            </div>
+            <input type="range" min="-3" max="3" step="0.05" value="${w1}" style="width:100%" oninput="modifyWeight('w1', ${j}, 1, this.value)">
+          </div>
+          <div class="slider-card">
+            <div class="slider-header">
+              <span>Bias b (pro H${j+1})</span>
+              <span class="val">${b.toFixed(2)}</span>
+            </div>
+            <input type="range" min="-3" max="3" step="0.05" value="${b}" style="width:100%" oninput="modifyBias('b1', ${j}, this.value)">
+          </div>
+        `;
+      } else {
+        // Output neuron
+        titleElem.textContent = `🔍 Detail Neuronu: Výstupní vrstva (ŷ)`;
+        const b = net.b2[0];
+        let formulaParts = [];
+        let termsSum = b;
+
+        let slidersHtml = '';
+        for (let j = 0; j < net.hiddenSize; j++) {
+          const w = net.w2[0][j];
+          const a = net.a1[j];
+          const term = a * w;
+          termsSum += term;
+          formulaParts.push(`(<span class="highlight-blue">${a.toFixed(2)}</span> · <span class="highlight-purple">${w.toFixed(2)}</span>)`);
+
+          slidersHtml += `
+            <div class="slider-card">
+              <div class="slider-header">
+                <span>Váha z H${j+1} do Výstupu</span>
+                <span class="val">${w.toFixed(2)}</span>
+              </div>
+              <input type="range" min="-3" max="3" step="0.05" value="${w}" style="width:100%" oninput="modifyWeight('w2', 0, ${j}, this.value)">
+            </div>
+          `;
+        }
+
+        slidersHtml += `
+          <div class="slider-card">
+            <div class="slider-header">
+              <span>Výstupní Bias b</span>
+              <span class="val">${b.toFixed(2)}</span>
+            </div>
+            <input type="range" min="-3" max="3" step="0.05" value="${b}" style="width:100%" oninput="modifyBias('b2', 0, this.value)">
+          </div>
+        `;
+
+        const sumZ = net.z2[0];
+        const outA = net.a2[0];
+
+        formulaElem.innerHTML = `
+<b>1. Vážený součet pro Výstup ($z_{out}$):</b>
+  z = $\\sum$ (Aktivace skryté vrstvy · Váhy) + Bias
+  z = ${formulaParts.join(' + ')} + (<span class="highlight-amber">${b.toFixed(3)}</span>)
+  z = <span class="highlight-green">${sumZ.toFixed(4)}</span>
+
+<b>2. Finální aktivace (Tanh výstup):</b>
+  ŷ = tanh(${sumZ.toFixed(4)}) = <span class="highlight-blue" style="font-size: 1.1em;">${outA.toFixed(4)}</span>
+        `;
+
+        slidersElem.innerHTML = slidersHtml;
+      }
+    }
+
+    function modifyWeight(target, row, col, val) {
+      val = parseFloat(val);
+      if (target === 'w1') net.w1[row][col] = val;
+      if (target === 'w2') net.w2[row][col] = val;
+      drawNetwork();
+      drawDecisionBoundary();
+      updateInspector();
+    }
+
+    function modifyBias(target, index, val) {
+      val = parseFloat(val);
+      if (target === 'b1') net.b1[index] = val;
+      if (target === 'b2') net.b2[index] = val;
+      drawNetwork();
+      drawDecisionBoundary();
+      updateInspector();
+    }
+
+    /* =========================================================================
+       9. CANVAS INTERACTION (CLICK & TOOLTIP)
+       ========================================================================= */
+    netCanvas.addEventListener('click', (e) => {
+      const rect = netCanvas.getBoundingClientRect();
+      const x = e.clientX - rect.left;
+      const y = e.clientY - rect.top;
+
+      // Check click on hidden nodes
+      nodePositions.hidden.forEach(n => {
+        const dist = Math.hypot(n.x - x, n.y - y);
+        if (dist <= n.r + 6) {
+          selectedNeuron = { layer: 'hidden', index: n.index };
+          drawNetwork();
+          updateInspector();
+        }
+      });
+
+      // Check click on output node
+      nodePositions.output.forEach(n => {
+        const dist = Math.hypot(n.x - x, n.y - y);
+        if (dist <= n.r + 6) {
+          selectedNeuron = { layer: 'output', index: n.index };
+          drawNetwork();
+          updateInspector();
+        }
+      });
+    });
+
+    netCanvas.addEventListener('mousemove', (e) => {
+      const rect = netCanvas.getBoundingClientRect();
+      const x = e.clientX - rect.left;
+      const y = e.clientY - rect.top;
+
+      let hovered = null;
+      [...nodePositions.inputs, ...nodePositions.hidden, ...nodePositions.output].forEach(n => {
+        if (Math.hypot(n.x - x, n.y - y) <= n.r) hovered = n;
+      });
+
+      if (hovered) {
+        tooltip.style.display = 'block';
+        tooltip.style.left = `${hovered.x + 20}px`;
+        tooltip.style.top = `${hovered.y - 10}px`;
+
+        if (hovered.type === 'input') {
+          const val = hovered.index === 0 ? document.getElementById('inputX1').value : document.getElementById('inputX2').value;
+          tooltip.textContent = `Vstup ${hovered.label}\nHodnota: ${val}`;
+        } else if (hovered.type === 'hidden') {
+          const a = net.a1[hovered.index];
+          const b = net.b1[hovered.index];
+          tooltip.textContent = `Skrytý neuron ${hovered.label}\nAktivace a: ${a.toFixed(3)}\nBias b: ${b.toFixed(3)}`;
+        } else {
+          const a = net.a2[0];
+          tooltip.textContent = `Výstupní neuron ŷ\nPredikce: ${a.toFixed(3)}`;
+        }
+      } else {
+        tooltip.style.display = 'none';
+      }
+    });
+
+    netCanvas.addEventListener('mouseleave', () => {
+      tooltip.style.display = 'none';
+    });
+
+    /* =========================================================================
+       10. STEP-BY-STEP FORWARD PASS EXPLORER (TAB 2)
+       ========================================================================= */
+    const StepDescriptions = [
+      {
+        title: "Krok 1 / 4: Vstupní vrstva (Data)",
+        desc: "Do sítě přichází numerická data. V našem případě souřadnice bodu [X₁, X₂]. Vstupní neurony neprovádí žádný matematický výpočet, pouze distribuují hodnoty dál do sítě."
+      },
+      {
+        title: "Krok 2 / 4: Vážený součet ve skryté vrstvě",
+        desc: "Každý skrytý neuron přijme signály ze všech vstupů. Vynásobí je příslušnými vahami (w) a sečte je s vlastním posunem (biasem): z = x₁w₁ + x₂w₂ + b."
+      },
+      {
+        title: "Krok 3 / 4: Aplikace aktivační funkce",
+        desc: "Hodnota z projde nelineární funkcí (např. Tanh nebo ReLU). Tím neuron rozhodne, jak silně se 'aktivuje' a jaký signál pošle dál."
+      },
+      {
+        title: "Krok 4 / 4: Finální výstup sítě (Predikce)",
+        desc: "Výstupní neuron posbírá aktivace skrytých neuronů, znovu je převáží svými vahami a vytvoří konečné číslo ŷ (např. kladné = třída Modrá, záporné = třída Červená)."
+      }
+    ];
+
+    function stepProgress(dir) {
+      currentStepIndex += dir;
+      if (currentStepIndex < 1) currentStepIndex = 1;
+      if (currentStepIndex > 4) currentStepIndex = 4;
+      renderStepVisual();
+    }
+
+    function renderStepVisual() {
+      const step = StepDescriptions[currentStepIndex - 1];
+      document.getElementById('stepIndicator').textContent = step.title;
+
+      const container = document.getElementById('stepVisualContainer');
+      const inX1 = parseFloat(document.getElementById('inputX1').value);
+      const inX2 = parseFloat(document.getElementById('inputX2').value);
+      net.forward([inX1, inX2]);
+
+      let html = `<p style="font-size: 0.95rem; color: #cbd5e1; margin-bottom: 16px;">${step.desc}</p>`;
+
+      if (currentStepIndex === 1) {
+        html += `
+          <div style="display: flex; gap: 20px; align-items: center; justify-content: center; padding: 20px 0;">
+            <div style="background: rgba(56, 189, 248, 0.15); border: 1px solid var(--accent-blue); padding: 14px 24px; border-radius: 10px; text-align: center;">
+              <div style="font-size: 0.8rem; color: var(--text-muted);">Vstupní signál X₁</div>
+              <div style="font-size: 1.5rem; font-weight: bold; font-family: var(--font-mono); color: var(--accent-blue);">${inX1.toFixed(2)}</div>
+            </div>
+            <div style="font-size: 1.5rem; color: var(--text-muted);">➔</div>
+            <div style="background: rgba(56, 189, 248, 0.15); border: 1px solid var(--accent-blue); padding: 14px 24px; border-radius: 10px; text-align: center;">
+              <div style="font-size: 0.8rem; color: var(--text-muted);">Vstupní signál X₂</div>
+              <div style="font-size: 1.5rem; font-weight: bold; font-family: var(--font-mono); color: var(--accent-blue);">${inX2.toFixed(2)}</div>
+            </div>
+          </div>
+        `;
+      } else if (currentStepIndex === 2) {
+        html += `<div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 12px;">`;
+        for (let j = 0; j < net.hiddenSize; j++) {
+          const z = net.z1[j];
+          html += `
+            <div style="background: var(--bg-secondary); border: 1px solid var(--border-color); padding: 12px; border-radius: 8px;">
+              <div style="font-weight: bold; color: var(--accent-purple); margin-bottom: 4px;">Skrytý neuron H${j+1}</div>
+              <div style="font-family: var(--font-mono); font-size: 0.8rem; color: #94a3b8;">
+                (${inX1.toFixed(2)} · ${net.w1[j][0].toFixed(2)}) + (${inX2.toFixed(2)} · ${net.w1[j][1].toFixed(2)}) + ${net.b1[j].toFixed(2)}
+              </div>
+              <div style="font-family: var(--font-mono); font-size: 1.1rem; color: var(--text-main); margin-top: 6px;">
+                Součet z = <b>${z.toFixed(4)}</b>
+              </div>
+            </div>
+          `;
+        }
+        html += `</div>`;
+      } else if (currentStepIndex === 3) {
+        html += `<div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 12px;">`;
+        for (let j = 0; j < net.hiddenSize; j++) {
+          const z = net.z1[j];
+          const a = net.a1[j];
+          html += `
+            <div style="background: var(--bg-secondary); border: 1px solid var(--border-color); padding: 12px; border-radius: 8px;">
+              <div style="font-weight: bold; color: var(--accent-purple); margin-bottom: 4px;">Aktivace H${j+1}</div>
+              <div style="font-family: var(--font-mono); font-size: 0.8rem; color: #94a3b8;">
+                ${net.actName}(${z.toFixed(3)})
+              </div>
+              <div style="font-family: var(--font-mono); font-size: 1.2rem; color: var(--accent-blue); margin-top: 6px;">
+                Aktivace a = <b>${a.toFixed(4)}</b>
+              </div>
+            </div>
+          `;
+        }
+        html += `</div>`;
+      } else {
+        const outZ = net.z2[0];
+        const outA = net.a2[0];
+        const decisionText = outA >= 0 ? "🔵 Třída Kladná (+1)" : "🔴 Třída Záporná (-1)";
+        html += `
+          <div style="background: var(--bg-secondary); border: 1px solid var(--border-color); padding: 20px; border-radius: 10px; max-width: 500px; margin: 0 auto; text-align: center;">
+            <div style="font-size: 0.85rem; color: var(--text-muted); text-transform: uppercase;">Výsledná predikce sítě ŷ</div>
+            <div style="font-size: 2.2rem; font-weight: bold; font-family: var(--font-mono); color: ${outA >= 0 ? 'var(--accent-blue)' : 'var(--accent-red)'}; margin: 8px 0;">
+              ${outA.toFixed(4)}
+            </div>
+            <div style="font-size: 1.1rem; font-weight: 600; color: #fff; margin-top: 8px;">
+              Rozhodnutí: ${decisionText}
+            </div>
+          </div>
+        `;
+      }
+
+      container.innerHTML = html;
+    }
+
+    /* =========================================================================
+       11. TAB SWITCHING LOGIC
+       ========================================================================= */
+    function switchTab(tabId, btnElem) {
+      document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+      document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+
+      if (btnElem) {
+        btnElem.classList.add('active');
+      } else {
+        const found = document.querySelector(`.tab-btn[data-tab="${tabId}"]`);
+        if (found) found.classList.add('active');
+      }
+
+      const target = document.getElementById(`tab-${tabId}`);
+      if (target) target.classList.add('active');
+
+      if (tabId === 'playground') {
+        resizeAllCanvases();
+        drawNetwork();
+        drawDecisionBoundary();
+        drawLossCurve();
+      } else if (tabId === 'stepbystep') {
+        renderStepVisual();
+      }
+    }
+
+    /* =========================================================================
+       12. INITIALIZATION & RESIZE HANDLING
+       ========================================================================= */
+    function resizeAllCanvases() {
+      setupCanvasDPI(netCanvas, netCtx);
+      setupCanvasDPI(lossCanvas, lossCtx);
+    }
+
+    window.addEventListener('resize', () => {
+      resizeAllCanvases();
+      drawNetwork();
+      drawLossCurve();
+    });
+
+    // Boot
+    function initApp() {
+      resizeAllCanvases();
+      drawNetwork();
+      drawDecisionBoundary();
+      drawLossCurve();
+      updateInspector();
+    }
+
+    if (document.readyState === 'loading') {
+      window.addEventListener('DOMContentLoaded', initApp);
+    } else {
+      initApp();
+    }
+  </script>
+</body>
+</html>
